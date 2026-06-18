@@ -291,13 +291,13 @@ docker compose -f docker-compose.portainer.yml logs -f backend frontend
 ```bash
 docker login
 
-docker build -t <dockerhub-username>/bio-project-management-backend:0.1.1 -t <dockerhub-username>/bio-project-management-backend:latest ./backend
-docker build -t <dockerhub-username>/bio-project-management-frontend:0.1.1 -t <dockerhub-username>/bio-project-management-frontend:latest ./frontend
+docker build -t siriuswang83/bio-project-management-backend:0.1.1 -t siriuswang83/bio-project-management-backend:latest ./backend
+docker build -t siriuswang83/bio-project-management-frontend:0.1.1 -t siriuswang83/bio-project-management-frontend:latest ./frontend
 
-docker push <dockerhub-username>/bio-project-management-backend:0.1.1
-docker push <dockerhub-username>/bio-project-management-backend:latest
-docker push <dockerhub-username>/bio-project-management-frontend:0.1.1
-docker push <dockerhub-username>/bio-project-management-frontend:latest
+docker push siriuswang83/bio-project-management-backend:0.1.1
+docker push siriuswang83/bio-project-management-backend:latest
+docker push siriuswang83/bio-project-management-frontend:0.1.1
+docker push siriuswang83/bio-project-management-frontend:latest
 ```
 
 也可以用 GitHub Actions 发布镜像：在仓库 Secrets 中增加 `DOCKERHUB_USERNAME` 和 `DOCKERHUB_TOKEN`，然后运行 `Publish Docker Hub Images` 工作流，version 填写 `0.1.1`。
@@ -305,14 +305,14 @@ docker push <dockerhub-username>/bio-project-management-frontend:latest
 需要手动拉取镜像时执行：
 
 ```bash
-docker pull <dockerhub-username>/bio-project-management-backend:0.1.1
-docker pull <dockerhub-username>/bio-project-management-frontend:0.1.1
+docker pull siriuswang83/bio-project-management-backend:0.1.1
+docker pull siriuswang83/bio-project-management-frontend:0.1.1
 ```
 
 在 OMV Compose 插件中新建 compose 文件，粘贴 `docker-compose.openmediavault.yml`，并设置：
 
 ```env
-DOCKERHUB_NAMESPACE=<dockerhub-username>
+DOCKERHUB_NAMESPACE=siriuswang83
 APP_VERSION=0.1.1
 POSTGRES_DB=bio_pm
 POSTGRES_USER=bio_pm

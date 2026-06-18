@@ -4,11 +4,9 @@ This guide deploys Bio Project Management with the OpenMediaVault Compose plugin
 
 ## Images
 
-Replace `<dockerhub-username>` with your Docker Hub namespace:
-
 ```bash
-docker pull <dockerhub-username>/bio-project-management-backend:0.1.1
-docker pull <dockerhub-username>/bio-project-management-frontend:0.1.1
+docker pull siriuswang83/bio-project-management-backend:0.1.1
+docker pull siriuswang83/bio-project-management-frontend:0.1.1
 ```
 
 The compose file also uses PostgreSQL and Redis official images:
@@ -25,13 +23,13 @@ Run these commands on a machine with Docker installed and Docker Hub login compl
 ```bash
 docker login
 
-docker build -t <dockerhub-username>/bio-project-management-backend:0.1.1 -t <dockerhub-username>/bio-project-management-backend:latest ./backend
-docker build -t <dockerhub-username>/bio-project-management-frontend:0.1.1 -t <dockerhub-username>/bio-project-management-frontend:latest ./frontend
+docker build -t siriuswang83/bio-project-management-backend:0.1.1 -t siriuswang83/bio-project-management-backend:latest ./backend
+docker build -t siriuswang83/bio-project-management-frontend:0.1.1 -t siriuswang83/bio-project-management-frontend:latest ./frontend
 
-docker push <dockerhub-username>/bio-project-management-backend:0.1.1
-docker push <dockerhub-username>/bio-project-management-backend:latest
-docker push <dockerhub-username>/bio-project-management-frontend:0.1.1
-docker push <dockerhub-username>/bio-project-management-frontend:latest
+docker push siriuswang83/bio-project-management-backend:0.1.1
+docker push siriuswang83/bio-project-management-backend:latest
+docker push siriuswang83/bio-project-management-frontend:0.1.1
+docker push siriuswang83/bio-project-management-frontend:latest
 ```
 
 ## Build And Push With GitHub Actions
@@ -43,7 +41,7 @@ This repository also includes `.github/workflows/docker-hub.yml`.
 3. Add these repository secrets:
 
    ```text
-   DOCKERHUB_USERNAME=<dockerhub-username>
+   DOCKERHUB_USERNAME=siriuswang83
    DOCKERHUB_TOKEN=<dockerhub-access-token>
    ```
 
@@ -54,8 +52,8 @@ This repository also includes `.github/workflows/docker-hub.yml`.
 After the workflow finishes, pull:
 
 ```bash
-docker pull <dockerhub-username>/bio-project-management-backend:0.1.1
-docker pull <dockerhub-username>/bio-project-management-frontend:0.1.1
+docker pull siriuswang83/bio-project-management-backend:0.1.1
+docker pull siriuswang83/bio-project-management-frontend:0.1.1
 ```
 
 ## OMV Compose Plugin
@@ -66,7 +64,7 @@ docker pull <dockerhub-username>/bio-project-management-frontend:0.1.1
 4. Set environment variables in the compose plugin or in the `.env` field:
 
    ```env
-   DOCKERHUB_NAMESPACE=<dockerhub-username>
+   DOCKERHUB_NAMESPACE=siriuswang83
    APP_VERSION=0.1.1
    POSTGRES_DB=bio_pm
    POSTGRES_USER=bio_pm

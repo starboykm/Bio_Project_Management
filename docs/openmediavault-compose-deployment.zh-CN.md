@@ -4,11 +4,9 @@
 
 ## 镜像拉取
 
-把 `<dockerhub-username>` 替换成你的 Docker Hub 用户名或命名空间：
-
 ```bash
-docker pull <dockerhub-username>/bio-project-management-backend:0.1.1
-docker pull <dockerhub-username>/bio-project-management-frontend:0.1.1
+docker pull siriuswang83/bio-project-management-backend:0.1.1
+docker pull siriuswang83/bio-project-management-frontend:0.1.1
 ```
 
 系统还会使用 PostgreSQL 和 Redis 官方镜像：
@@ -25,13 +23,13 @@ docker pull redis:7-alpine
 ```bash
 docker login
 
-docker build -t <dockerhub-username>/bio-project-management-backend:0.1.1 -t <dockerhub-username>/bio-project-management-backend:latest ./backend
-docker build -t <dockerhub-username>/bio-project-management-frontend:0.1.1 -t <dockerhub-username>/bio-project-management-frontend:latest ./frontend
+docker build -t siriuswang83/bio-project-management-backend:0.1.1 -t siriuswang83/bio-project-management-backend:latest ./backend
+docker build -t siriuswang83/bio-project-management-frontend:0.1.1 -t siriuswang83/bio-project-management-frontend:latest ./frontend
 
-docker push <dockerhub-username>/bio-project-management-backend:0.1.1
-docker push <dockerhub-username>/bio-project-management-backend:latest
-docker push <dockerhub-username>/bio-project-management-frontend:0.1.1
-docker push <dockerhub-username>/bio-project-management-frontend:latest
+docker push siriuswang83/bio-project-management-backend:0.1.1
+docker push siriuswang83/bio-project-management-backend:latest
+docker push siriuswang83/bio-project-management-frontend:0.1.1
+docker push siriuswang83/bio-project-management-frontend:latest
 ```
 
 ## 使用 GitHub Actions 构建并推送
@@ -43,7 +41,7 @@ docker push <dockerhub-username>/bio-project-management-frontend:latest
 3. 新增两个仓库 Secret：
 
    ```text
-   DOCKERHUB_USERNAME=<dockerhub-username>
+   DOCKERHUB_USERNAME=siriuswang83
    DOCKERHUB_TOKEN=<dockerhub-access-token>
    ```
 
@@ -54,8 +52,8 @@ docker push <dockerhub-username>/bio-project-management-frontend:latest
 工作流完成后即可拉取：
 
 ```bash
-docker pull <dockerhub-username>/bio-project-management-backend:0.1.1
-docker pull <dockerhub-username>/bio-project-management-frontend:0.1.1
+docker pull siriuswang83/bio-project-management-backend:0.1.1
+docker pull siriuswang83/bio-project-management-frontend:0.1.1
 ```
 
 ## OMV Compose 插件部署步骤
@@ -66,7 +64,7 @@ docker pull <dockerhub-username>/bio-project-management-frontend:0.1.1
 4. 在 Compose 插件的环境变量或 `.env` 区域填写：
 
    ```env
-   DOCKERHUB_NAMESPACE=<dockerhub-username>
+   DOCKERHUB_NAMESPACE=siriuswang83
    APP_VERSION=0.1.1
    POSTGRES_DB=bio_pm
    POSTGRES_USER=bio_pm

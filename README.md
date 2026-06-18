@@ -292,13 +292,13 @@ Before deploying, build and push the two application images to your Docker Hub n
 ```bash
 docker login
 
-docker build -t <dockerhub-username>/bio-project-management-backend:0.1.1 -t <dockerhub-username>/bio-project-management-backend:latest ./backend
-docker build -t <dockerhub-username>/bio-project-management-frontend:0.1.1 -t <dockerhub-username>/bio-project-management-frontend:latest ./frontend
+docker build -t siriuswang83/bio-project-management-backend:0.1.1 -t siriuswang83/bio-project-management-backend:latest ./backend
+docker build -t siriuswang83/bio-project-management-frontend:0.1.1 -t siriuswang83/bio-project-management-frontend:latest ./frontend
 
-docker push <dockerhub-username>/bio-project-management-backend:0.1.1
-docker push <dockerhub-username>/bio-project-management-backend:latest
-docker push <dockerhub-username>/bio-project-management-frontend:0.1.1
-docker push <dockerhub-username>/bio-project-management-frontend:latest
+docker push siriuswang83/bio-project-management-backend:0.1.1
+docker push siriuswang83/bio-project-management-backend:latest
+docker push siriuswang83/bio-project-management-frontend:0.1.1
+docker push siriuswang83/bio-project-management-frontend:latest
 ```
 
 You can also publish images from GitHub Actions. Add repository secrets `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN`, then run the `Publish Docker Hub Images` workflow with version `0.1.1`.
@@ -306,14 +306,14 @@ You can also publish images from GitHub Actions. Add repository secrets `DOCKERH
 Pull the images manually if needed:
 
 ```bash
-docker pull <dockerhub-username>/bio-project-management-backend:0.1.1
-docker pull <dockerhub-username>/bio-project-management-frontend:0.1.1
+docker pull siriuswang83/bio-project-management-backend:0.1.1
+docker pull siriuswang83/bio-project-management-frontend:0.1.1
 ```
 
 In OMV Compose plugin, create a compose file from `docker-compose.openmediavault.yml` and set:
 
 ```env
-DOCKERHUB_NAMESPACE=<dockerhub-username>
+DOCKERHUB_NAMESPACE=siriuswang83
 APP_VERSION=0.1.1
 POSTGRES_DB=bio_pm
 POSTGRES_USER=bio_pm
