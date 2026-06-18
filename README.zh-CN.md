@@ -46,6 +46,8 @@ infra/postgres/       PostgreSQL 初始化文件
 scripts/              Windows 独立启动/停止脚本
 docs/                 架构和部署补充文档
 docker-compose.yml    PostgreSQL、Redis、后端和前端编排
+docker-compose.portainer.yml
+                      Portainer 专用 Stack 文件
 ```
 
 ## 快速启动
@@ -224,6 +226,60 @@ docker compose down
 ```bash
 docker compose down -v
 ```
+
+### Portainer Stack 部署
+
+使用 [docker-compose.portainer.yml](docker-compose.portainer.yml) 在 Portainer 中部署。
+
+推荐流程：
+
+1. 打开 Portainer，进入 `Stacks`。
+2. 新建 Stack，例如 `bio-project-management`。
+3. 构建方式选择 `Repository`。
+4. Repository URL 填写：`https://github.com/starboykm/Bio_Project_Management.git`
+5. Compose path 填写：`docker-compose.portainer.yml`
+6. 部署前设置这些 Stack 环境变量：
+
+   ```env
+   POSTGRES_DB=bio_pm
+   POSTGRES_USER=bio_pm
+   POSTGRES_PASSWORD=replace_with_a_strong_password
+   JWT_SECRET=replace_with_a_long_random_secret
+   ADMIN_EMAIL=admin@bio.local
+   ADMIN_PASSWORD=replace_with_a_strong_admin_password
+   FRONTEND_PORT=5173
+   BACKEND_PORT=3000
+   ```
+
+7. 点击部署后访问 `http://服务器IP:5173`。
+
+Portainer compose 文件会从当前仓库构建后端和前端镜像。构建后的本地镜像名称为：
+
+- `bio-project-management-backend:0.1.0`
+- `bio-project-management-frontend:0.1.0`
+
+不使用 Portainer，直接在服务器拉取并部署：
+
+```bash
+git clone https://github.com/starboykm/Bio_Project_Management.git
+cd Bio_Project_Management
+cp .env.example .env
+docker compose -f docker-compose.portainer.yml up -d --build
+```
+
+查看服务状态：
+
+```bash
+docker compose -f docker-compose.portainer.yml ps
+```
+
+查看日志：
+
+```bash
+docker compose -f docker-compose.portainer.yml logs -f backend frontend
+```
+
+注意：当前版本是从源码构建镜像，不是从公开镜像仓库直接 `docker pull`。如果你希望使用 `docker pull ghcr.io/...` 这种方式，需要先把后端和前端镜像发布到镜像仓库，然后把 yml 中的 `build` 配置替换为镜像地址。
 
 ## Release
 

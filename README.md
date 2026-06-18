@@ -47,6 +47,8 @@ infra/postgres/       PostgreSQL initialization files
 scripts/              Windows standalone start/stop scripts
 docs/                 Architecture and deployment notes
 docker-compose.yml    PostgreSQL, Redis, backend, and frontend stack
+docker-compose.portainer.yml
+                      Portainer-ready stack file
 ```
 
 ## Quick Start
@@ -225,6 +227,60 @@ Stop and remove persistent volumes:
 ```bash
 docker compose down -v
 ```
+
+### Portainer Stack Deployment
+
+Use [docker-compose.portainer.yml](docker-compose.portainer.yml) when deploying from Portainer.
+
+Recommended Portainer flow:
+
+1. Open Portainer and go to `Stacks`.
+2. Create a new stack, for example `bio-project-management`.
+3. Choose `Repository` as the build method.
+4. Repository URL: `https://github.com/starboykm/Bio_Project_Management.git`
+5. Compose path: `docker-compose.portainer.yml`
+6. Set these stack environment variables before deploying:
+
+   ```env
+   POSTGRES_DB=bio_pm
+   POSTGRES_USER=bio_pm
+   POSTGRES_PASSWORD=replace_with_a_strong_password
+   JWT_SECRET=replace_with_a_long_random_secret
+   ADMIN_EMAIL=admin@bio.local
+   ADMIN_PASSWORD=replace_with_a_strong_admin_password
+   FRONTEND_PORT=5173
+   BACKEND_PORT=3000
+   ```
+
+7. Deploy the stack and open `http://SERVER_IP:5173`.
+
+The Portainer compose file builds the backend and frontend images from this repository. The generated local image names are:
+
+- `bio-project-management-backend:0.1.0`
+- `bio-project-management-frontend:0.1.0`
+
+Pull and deploy from a server without Portainer:
+
+```bash
+git clone https://github.com/starboykm/Bio_Project_Management.git
+cd Bio_Project_Management
+cp .env.example .env
+docker compose -f docker-compose.portainer.yml up -d --build
+```
+
+Check service status:
+
+```bash
+docker compose -f docker-compose.portainer.yml ps
+```
+
+View logs:
+
+```bash
+docker compose -f docker-compose.portainer.yml logs -f backend frontend
+```
+
+Note: this release builds images from source instead of pulling prebuilt images from a public registry. If you want `docker pull ghcr.io/...` style deployment, publish the backend and frontend images to a registry first, then replace the `build` sections with registry image names.
 
 ## Release
 

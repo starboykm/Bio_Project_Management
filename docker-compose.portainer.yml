@@ -1,0 +1,100 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: bio-pm-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-bio_pm}
+      POSTGRES_USER: ${POSTGRES_USER:-bio_pm}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_this_postgres_password}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - bio_pm_postgres_data:/var/lib/postgresql/data
+      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-bio_pm} -d ${POSTGRES_DB:-bio_pm}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks:
+      - bio_pm_net
+
+  redis:
+    image: redis:7-alpine
+    container_name: bio-pm-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - bio_pm_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - bio_pm_net
+
+  backend:
+    image: bio-project-management-backend:0.1.0
+    container_name: bio-pm-backend
+    restart: unless-stopped
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      JWT_SECRET: ${JWT_SECRET:-change_this_jwt_secret_before_production}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-8h}
+      DATABASE_TYPE: postgres
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_USER: ${POSTGRES_USER:-bio_pm}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-change_this_postgres_password}
+      DATABASE_NAME: ${POSTGRES_DB:-bio_pm}
+      DATABASE_SYNCHRONIZE: ${DATABASE_SYNCHRONIZE:-true}
+      REDIS_ENABLED: ${REDIS_ENABLED:-true}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      UPLOAD_DIR: /app/uploads
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@bio.local}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-Admin123456}
+    ports:
+      - "${BACKEND_PORT:-3000}:3000"
+    volumes:
+      - bio_pm_uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - bio_pm_net
+
+  frontend:
+    image: bio-project-management-frontend:0.1.0
+    container_name: bio-pm-frontend
+    restart: unless-stopped
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "${FRONTEND_PORT:-5173}:80"
+    depends_on:
+      - backend
+    networks:
+      - bio_pm_net
+
+volumes:
+  bio_pm_postgres_data:
+  bio_pm_redis_data:
+  bio_pm_uploads:
+
+networks:
+  bio_pm_net:
+    driver: bridge
