@@ -12,7 +12,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\start-standalone.ps1
 Open:
 
 - Frontend: `http://127.0.0.1:5173/`
-- Backend API: `http://127.0.0.1:3000/api`
+- Backend API: `http://127.0.0.1:3333/api`
 
 Default login:
 

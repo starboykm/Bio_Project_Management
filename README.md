@@ -49,6 +49,8 @@ docs/                 Architecture and deployment notes
 docker-compose.yml    PostgreSQL, Redis, backend, and frontend stack
 docker-compose.portainer.yml
                       Portainer-ready stack file
+docker-compose.openmediavault.yml
+                      OpenMediaVault Compose plugin stack file
 ```
 
 ## Quick Start
@@ -61,7 +63,7 @@ npm.cmd run dev
 Default local URLs:
 
 - Frontend: `http://localhost:5173`
-- Backend API: `http://localhost:3000/api`
+- Backend API: `http://localhost:3333/api`
 
 Default first admin account:
 
@@ -129,7 +131,7 @@ Use this mode when PostgreSQL and Redis are installed on the server.
    npm.cmd --workspace backend run start
    ```
 
-6. Serve `frontend/dist` with nginx, Caddy, IIS, or another static server, and proxy `/api` to `http://127.0.0.1:3000/api`.
+6. Serve `frontend/dist` with nginx, Caddy, IIS, or another static server, and proxy `/api` to `http://127.0.0.1:3333/api`.
 
 Recommended production settings:
 
@@ -185,7 +187,8 @@ docker run -d --name bio-pm-backend --network bio-pm-net \
   -e REDIS_HOST=bio-pm-redis \
   -e REDIS_PORT=6379 \
   -v bio_pm_uploads:/app/uploads \
-  -p 3000:3000 \
+  -e PORT=3333 \
+  -p 3333:3333 \
   bio-pm-backend
 ```
 
@@ -212,7 +215,7 @@ docker compose up -d --build
 Services:
 
 - Frontend: `http://localhost:5173`
-- Backend API: `http://localhost:3000/api`
+- Backend API: `http://localhost:3333/api`
 - PostgreSQL: `localhost:5432`
 - Redis: `localhost:6379`
 
@@ -249,7 +252,7 @@ Recommended Portainer flow:
    ADMIN_EMAIL=admin@bio.local
    ADMIN_PASSWORD=replace_with_a_strong_admin_password
    FRONTEND_PORT=5173
-   BACKEND_PORT=3000
+   BACKEND_PORT=3333
    ```
 
 7. Deploy the stack and open `http://SERVER_IP:5173`.
@@ -280,7 +283,53 @@ View logs:
 docker compose -f docker-compose.portainer.yml logs -f backend frontend
 ```
 
-Note: this release builds images from source instead of pulling prebuilt images from a public registry. If you want `docker pull ghcr.io/...` style deployment, publish the backend and frontend images to a registry first, then replace the `build` sections with registry image names.
+### OpenMediaVault Compose Plugin Deployment
+
+Use [docker-compose.openmediavault.yml](docker-compose.openmediavault.yml) when deploying from the OpenMediaVault Compose plugin. This file pulls prebuilt application images from Docker Hub and does not build source code on the OMV server.
+
+Before deploying, build and push the two application images to your Docker Hub namespace:
+
+```bash
+docker login
+
+docker build -t <dockerhub-username>/bio-project-management-backend:0.1.1 -t <dockerhub-username>/bio-project-management-backend:latest ./backend
+docker build -t <dockerhub-username>/bio-project-management-frontend:0.1.1 -t <dockerhub-username>/bio-project-management-frontend:latest ./frontend
+
+docker push <dockerhub-username>/bio-project-management-backend:0.1.1
+docker push <dockerhub-username>/bio-project-management-backend:latest
+docker push <dockerhub-username>/bio-project-management-frontend:0.1.1
+docker push <dockerhub-username>/bio-project-management-frontend:latest
+```
+
+You can also publish images from GitHub Actions. Add repository secrets `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN`, then run the `Publish Docker Hub Images` workflow with version `0.1.1`.
+
+Pull the images manually if needed:
+
+```bash
+docker pull <dockerhub-username>/bio-project-management-backend:0.1.1
+docker pull <dockerhub-username>/bio-project-management-frontend:0.1.1
+```
+
+In OMV Compose plugin, create a compose file from `docker-compose.openmediavault.yml` and set:
+
+```env
+DOCKERHUB_NAMESPACE=<dockerhub-username>
+APP_VERSION=0.1.1
+POSTGRES_DB=bio_pm
+POSTGRES_USER=bio_pm
+POSTGRES_PASSWORD=replace_with_a_strong_password
+JWT_SECRET=replace_with_a_long_random_secret
+ADMIN_EMAIL=admin@bio.local
+ADMIN_PASSWORD=replace_with_a_strong_admin_password
+FRONTEND_PORT=5173
+BACKEND_PORT=3333
+```
+
+Open `http://OMV_SERVER_IP:5173` after deployment. Backend API is available at `http://OMV_SERVER_IP:3333/api`.
+
+See [OpenMediaVault deployment guide](docs/openmediavault-compose-deployment.md) for the full deployment plan.
+
+Note: the backend listens on port `3333` in Docker deployments because port `3000` is often occupied on NAS servers.
 
 ## Release
 

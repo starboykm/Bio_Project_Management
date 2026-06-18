@@ -39,9 +39,10 @@ services:
       DATABASE_NAME: ${POSTGRES_DB:-bio_pm}
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      PORT: 3333
       NODE_ENV: production
     ports:
-      - "${BACKEND_PORT:-3000}:3000"
+      - "${BACKEND_PORT:-3333}:3333"
     volumes:
       - uploads_data:/app/uploads
     depends_on:

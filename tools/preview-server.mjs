@@ -4,7 +4,7 @@ import { extname, join, resolve } from 'node:path';
 
 const root = resolve('frontend/dist');
 const port = Number(process.env.PREVIEW_PORT || 5173);
-const apiTargetPort = Number(process.env.BACKEND_PORT || 3000);
+const apiTargetPort = Number(process.env.BACKEND_PORT || 3333);
 const types = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'application/javascript; charset=utf-8',

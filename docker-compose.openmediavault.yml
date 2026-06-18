@@ -11,7 +11,6 @@ services:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - bio_pm_postgres_data:/var/lib/postgresql/data
-      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-bio_pm} -d ${POSTGRES_DB:-bio_pm}"]
       interval: 10s
@@ -40,12 +39,9 @@ services:
       - bio_pm_net
 
   backend:
-    image: bio-project-management-backend:0.1.1
+    image: ${DOCKERHUB_NAMESPACE:-your-dockerhub-username}/bio-project-management-backend:${APP_VERSION:-0.1.1}
     container_name: bio-pm-backend
     restart: unless-stopped
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
     environment:
       NODE_ENV: production
       PORT: 3333
@@ -77,12 +73,9 @@ services:
       - bio_pm_net
 
   frontend:
-    image: bio-project-management-frontend:0.1.1
+    image: ${DOCKERHUB_NAMESPACE:-your-dockerhub-username}/bio-project-management-frontend:${APP_VERSION:-0.1.1}
     container_name: bio-pm-frontend
     restart: unless-stopped
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
     ports:
       - "${FRONTEND_PORT:-5173}:80"
     depends_on:

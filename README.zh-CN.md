@@ -48,6 +48,8 @@ docs/                 架构和部署补充文档
 docker-compose.yml    PostgreSQL、Redis、后端和前端编排
 docker-compose.portainer.yml
                       Portainer 专用 Stack 文件
+docker-compose.openmediavault.yml
+                      OpenMediaVault Compose 插件专用 Stack 文件
 ```
 
 ## 快速启动
@@ -60,7 +62,7 @@ npm.cmd run dev
 默认访问地址：
 
 - 前端：`http://localhost:5173`
-- 后端 API：`http://localhost:3000/api`
+- 后端 API：`http://localhost:3333/api`
 
 默认首个管理员：
 
@@ -128,7 +130,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\stop-standalone.ps1
    npm.cmd --workspace backend run start
    ```
 
-6. 使用 nginx、Caddy、IIS 或其他静态服务器托管 `frontend/dist`，并将 `/api` 代理到 `http://127.0.0.1:3000/api`。
+6. 使用 nginx、Caddy、IIS 或其他静态服务器托管 `frontend/dist`，并将 `/api` 代理到 `http://127.0.0.1:3333/api`。
 
 生产建议：
 
@@ -184,7 +186,8 @@ docker run -d --name bio-pm-backend --network bio-pm-net \
   -e REDIS_HOST=bio-pm-redis \
   -e REDIS_PORT=6379 \
   -v bio_pm_uploads:/app/uploads \
-  -p 3000:3000 \
+  -e PORT=3333 \
+  -p 3333:3333 \
   bio-pm-backend
 ```
 
@@ -211,7 +214,7 @@ docker compose up -d --build
 服务地址：
 
 - 前端：`http://localhost:5173`
-- 后端 API：`http://localhost:3000/api`
+- 后端 API：`http://localhost:3333/api`
 - PostgreSQL：`localhost:5432`
 - Redis：`localhost:6379`
 
@@ -248,7 +251,7 @@ docker compose down -v
    ADMIN_EMAIL=admin@bio.local
    ADMIN_PASSWORD=replace_with_a_strong_admin_password
    FRONTEND_PORT=5173
-   BACKEND_PORT=3000
+   BACKEND_PORT=3333
    ```
 
 7. 点击部署后访问 `http://服务器IP:5173`。
@@ -279,7 +282,53 @@ docker compose -f docker-compose.portainer.yml ps
 docker compose -f docker-compose.portainer.yml logs -f backend frontend
 ```
 
-注意：当前版本是从源码构建镜像，不是从公开镜像仓库直接 `docker pull`。如果你希望使用 `docker pull ghcr.io/...` 这种方式，需要先把后端和前端镜像发布到镜像仓库，然后把 yml 中的 `build` 配置替换为镜像地址。
+### OpenMediaVault Compose 插件部署
+
+使用 [docker-compose.openmediavault.yml](docker-compose.openmediavault.yml) 在 OpenMediaVault 的 Compose 插件中部署。这个文件会从 Docker Hub 拉取已经构建好的应用镜像，不会在 OMV 服务器上构建源码。
+
+部署前先把两个应用镜像构建并推送到你的 Docker Hub 命名空间：
+
+```bash
+docker login
+
+docker build -t <dockerhub-username>/bio-project-management-backend:0.1.1 -t <dockerhub-username>/bio-project-management-backend:latest ./backend
+docker build -t <dockerhub-username>/bio-project-management-frontend:0.1.1 -t <dockerhub-username>/bio-project-management-frontend:latest ./frontend
+
+docker push <dockerhub-username>/bio-project-management-backend:0.1.1
+docker push <dockerhub-username>/bio-project-management-backend:latest
+docker push <dockerhub-username>/bio-project-management-frontend:0.1.1
+docker push <dockerhub-username>/bio-project-management-frontend:latest
+```
+
+也可以用 GitHub Actions 发布镜像：在仓库 Secrets 中增加 `DOCKERHUB_USERNAME` 和 `DOCKERHUB_TOKEN`，然后运行 `Publish Docker Hub Images` 工作流，version 填写 `0.1.1`。
+
+需要手动拉取镜像时执行：
+
+```bash
+docker pull <dockerhub-username>/bio-project-management-backend:0.1.1
+docker pull <dockerhub-username>/bio-project-management-frontend:0.1.1
+```
+
+在 OMV Compose 插件中新建 compose 文件，粘贴 `docker-compose.openmediavault.yml`，并设置：
+
+```env
+DOCKERHUB_NAMESPACE=<dockerhub-username>
+APP_VERSION=0.1.1
+POSTGRES_DB=bio_pm
+POSTGRES_USER=bio_pm
+POSTGRES_PASSWORD=replace_with_a_strong_password
+JWT_SECRET=replace_with_a_long_random_secret
+ADMIN_EMAIL=admin@bio.local
+ADMIN_PASSWORD=replace_with_a_strong_admin_password
+FRONTEND_PORT=5173
+BACKEND_PORT=3333
+```
+
+部署后访问 `http://OMV服务器IP:5173`。后端 API 地址为 `http://OMV服务器IP:3333/api`。
+
+完整方案见 [OpenMediaVault 部署说明](docs/openmediavault-compose-deployment.zh-CN.md)。
+
+说明：Docker 部署中的后端端口已经改为 `3333`，避免和 NAS 服务器上常见的 `3000` 端口冲突。
 
 ## Release
 
