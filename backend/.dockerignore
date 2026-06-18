@@ -1,0 +1,11 @@
+node_modules
+dist
+coverage
+uploads
+data
+logs
+*.log
+*.pid
+.env
+.env.*
+.DS_Store
