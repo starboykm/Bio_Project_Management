@@ -38,6 +38,24 @@ export class Task {
   @Column({ type: 'date', nullable: true })
   dueDate?: string;
 
+  @Column({ default: 'none' })
+  recurrenceType: 'none' | 'daily' | 'weekly' | 'monthly' | 'custom';
+
+  @Column({ default: 1 })
+  recurrenceInterval: number;
+
+  @Column({ nullable: true })
+  recurrenceTime?: string;
+
+  @Column({ nullable: true })
+  recurrenceDayOfWeek?: number;
+
+  @Column({ nullable: true })
+  recurrenceDayOfMonth?: number;
+
+  @Column({ nullable: true })
+  recurrenceCron?: string;
+
   @CreateDateColumn()
   createdAt: Date;
 

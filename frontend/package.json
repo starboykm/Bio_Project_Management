@@ -1,6 +1,6 @@
 {
   "name": "@bio-pm/frontend",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "type": "module",
   "scripts": {
@@ -10,14 +10,23 @@
     "preview": "vite preview --host 0.0.0.0"
   },
   "dependencies": {
+    "@lucide/vue": "^1.20.0",
+    "@tiptap/extension-image": "^3.27.0",
+    "@tiptap/extension-link": "^3.27.0",
+    "@tiptap/pm": "^3.27.0",
+    "@tiptap/starter-kit": "^3.27.0",
+    "@tiptap/vue-3": "^3.27.0",
     "axios": "^1.7.9",
     "echarts": "^5.5.1",
     "element-plus": "^2.9.1",
-    "@lucide/vue": "^1.20.0",
+    "html-docx-js-typescript": "^0.1.5",
+    "html2pdf.js": "^0.14.0",
+    "turndown": "^7.2.4",
     "vue": "^3.5.13",
     "vue-router": "^4.5.0"
   },
   "devDependencies": {
+    "@types/turndown": "^5.0.6",
     "@vitejs/plugin-vue": "^6.0.7",
     "typescript": "^5.7.2",
     "vite": "^8.0.16",

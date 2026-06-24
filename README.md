@@ -259,8 +259,8 @@ Recommended Portainer flow:
 
 The Portainer compose file builds the backend and frontend images from this repository. The generated local image names are:
 
-- `bio-project-management-backend:0.1.0`
-- `bio-project-management-frontend:0.1.0`
+- `bio-project-management-backend:0.1.2`
+- `bio-project-management-frontend:0.1.2`
 
 Pull and deploy from a server without Portainer:
 
@@ -292,29 +292,29 @@ Before deploying, build and push the two application images to your Docker Hub n
 ```bash
 docker login
 
-docker build -t siriuswang83/bio-project-management-backend:0.1.1 -t siriuswang83/bio-project-management-backend:latest ./backend
-docker build -t siriuswang83/bio-project-management-frontend:0.1.1 -t siriuswang83/bio-project-management-frontend:latest ./frontend
+docker build -t siriuswang83/bio-project-management-backend:0.1.2 -t siriuswang83/bio-project-management-backend:latest ./backend
+docker build -t siriuswang83/bio-project-management-frontend:0.1.2 -t siriuswang83/bio-project-management-frontend:latest ./frontend
 
-docker push siriuswang83/bio-project-management-backend:0.1.1
+docker push siriuswang83/bio-project-management-backend:0.1.2
 docker push siriuswang83/bio-project-management-backend:latest
-docker push siriuswang83/bio-project-management-frontend:0.1.1
+docker push siriuswang83/bio-project-management-frontend:0.1.2
 docker push siriuswang83/bio-project-management-frontend:latest
 ```
 
-You can also publish images from GitHub Actions. Add repository secrets `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN`, then run the `Publish Docker Hub Images` workflow with version `0.1.1`.
+You can also publish images from GitHub Actions. Add repository secrets `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN`, then run the `Publish Docker Hub Images` workflow with version `0.1.2`.
 
 Pull the images manually if needed:
 
 ```bash
-docker pull siriuswang83/bio-project-management-backend:0.1.1
-docker pull siriuswang83/bio-project-management-frontend:0.1.1
+docker pull siriuswang83/bio-project-management-backend:0.1.2
+docker pull siriuswang83/bio-project-management-frontend:0.1.2
 ```
 
 In OMV Compose plugin, create a compose file from `docker-compose.openmediavault.yml` and set:
 
 ```env
 DOCKERHUB_NAMESPACE=siriuswang83
-APP_VERSION=0.1.1
+APP_VERSION=0.1.2
 POSTGRES_DB=bio_pm
 POSTGRES_USER=bio_pm
 POSTGRES_PASSWORD=replace_with_a_strong_password
@@ -333,6 +333,6 @@ Note: the backend listens on port `3333` in Docker deployments because port `300
 
 ## Release
 
-The first release is tagged as `v0.1.0`.
+The first release is tagged as `v0.1.2`.
 
-See [Release Notes](docs/RELEASE_NOTES_v0.1.0.md).
+See [Release Notes](docs/RELEASE_NOTES_v0.1.2.md).

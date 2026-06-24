@@ -1,7 +1,9 @@
 import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { CurrentUser } from '../common/current-user.decorator';
 import { JwtAuthGuard } from '../common/jwt-auth.guard';
 import { Permissions } from '../common/permissions.decorator';
 import { PermissionsGuard } from '../common/permissions.guard';
+import { User } from '../user/user.entity';
 import { CrmService } from './crm.service';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
@@ -25,13 +27,13 @@ export class CrmController {
 
   @Post()
   @Permissions('crm:write')
-  create(@Body() dto: CreateCustomerDto) {
-    return this.crmService.create(dto);
+  create(@Body() dto: CreateCustomerDto, @CurrentUser() user: User) {
+    return this.crmService.create(dto, user);
   }
 
   @Patch(':id')
   @Permissions('crm:write')
-  update(@Param('id') id: string, @Body() dto: UpdateCustomerDto) {
-    return this.crmService.update(id, dto);
+  update(@Param('id') id: string, @Body() dto: UpdateCustomerDto, @CurrentUser() user: User) {
+    return this.crmService.update(id, dto, user);
   }
 }

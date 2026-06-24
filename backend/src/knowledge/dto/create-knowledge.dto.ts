@@ -29,14 +29,32 @@ export class CreateKnowledgeDto {
   category?: string;
 
   @IsOptional()
+  @IsString()
+  categoryId?: string;
+
+  @IsOptional()
   @Transform(({ value }) => (Array.isArray(value) ? value : String(value || '').split(',').filter(Boolean)))
   @IsArray()
+  @IsString({ each: true })
   tags?: string[];
 
   @IsOptional()
   @Transform(({ value }) => (Array.isArray(value) ? value : String(value || '').split(',').filter(Boolean)))
   @IsArray()
   collaboratorIds?: string[];
+
+  @IsOptional()
+  @IsArray()
+  collaboratorPermissions?: Array<{ userId: string; permission: 'readonly' | 'editable' | 'collab' }>;
+
+  @IsOptional()
+  @IsIn(['all', 'private', 'selected'])
+  visibilityMode?: 'all' | 'private' | 'selected';
+
+  @IsOptional()
+  @Transform(({ value }) => (Array.isArray(value) ? value : String(value || '').split(',').filter(Boolean)))
+  @IsArray()
+  visibleUserIds?: string[];
 
   @IsOptional()
   @IsIn(['readonly', 'editable', 'collab', 'share'])

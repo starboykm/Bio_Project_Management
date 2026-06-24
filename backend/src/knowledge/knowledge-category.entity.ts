@@ -12,6 +12,12 @@ export class KnowledgeCategory {
   description?: string;
 
   @Column({ nullable: true })
+  parentId?: string;
+
+  @Column({ default: 'folder' })
+  icon: string;
+
+  @Column({ nullable: true })
   creatorId?: string;
 
   @CreateDateColumn()

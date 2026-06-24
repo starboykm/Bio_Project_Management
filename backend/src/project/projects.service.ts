@@ -90,6 +90,13 @@ export class ProjectsService {
     return saved;
   }
 
+  uploadContract(file: Express.Multer.File) {
+    return {
+      name: file.originalname,
+      url: `/uploads/${file.filename}`,
+    };
+  }
+
   async remove(id: string, user: User) {
     const project = await this.getProjectOrThrow(id);
     this.assertCanWrite(user, project);

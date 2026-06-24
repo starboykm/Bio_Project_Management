@@ -40,11 +40,11 @@ export class KnowledgeService {
     return this.categories.find({ order: { updatedAt: 'DESC' } });
   }
 
-  createCategory(dto: { name: string; description?: string }, creatorId?: string) {
-    return this.categories.save(this.categories.create({ ...dto, creatorId }));
+  createCategory(dto: { name: string; description?: string; parentId?: string; icon?: string }, creatorId?: string) {
+    return this.categories.save(this.categories.create({ ...dto, icon: dto.icon || 'folder', creatorId }));
   }
 
-  async updateCategory(id: string, dto: { name?: string; description?: string }) {
+  async updateCategory(id: string, dto: { name?: string; description?: string; parentId?: string; icon?: string }) {
     const category = await this.categories.preload({ id, ...dto });
     if (!category) {
       throw new NotFoundException('Knowledge category not found');
@@ -57,6 +57,7 @@ export class KnowledgeService {
     if (!category) {
       throw new NotFoundException('Knowledge category not found');
     }
+    await this.articles.update({ categoryId: category.id }, { categoryId: undefined, category: undefined });
     await this.articles.update({ category: category.name }, { category: undefined });
     await this.categories.delete(id);
     return { deleted: true, id };
@@ -103,6 +104,9 @@ export class KnowledgeService {
         ...dto,
         tags: dto.tags || [],
         collaboratorIds: dto.collaboratorIds || [],
+        collaboratorPermissions: dto.collaboratorPermissions || [],
+        visibilityMode: dto.visibilityMode || 'all',
+        visibleUserIds: dto.visibleUserIds || [],
         permissionMode: dto.permissionMode || 'readonly',
         editorMode: dto.editorMode || 'rich',
         richContent: dto.richContent || dto.content,
@@ -124,6 +128,9 @@ export class KnowledgeService {
       ...dto,
       tags: dto.tags ?? current.tags,
       collaboratorIds: dto.collaboratorIds ?? current.collaboratorIds,
+      collaboratorPermissions: dto.collaboratorPermissions ?? current.collaboratorPermissions,
+      visibilityMode: dto.visibilityMode ?? current.visibilityMode,
+      visibleUserIds: dto.visibleUserIds ?? current.visibleUserIds,
     });
     if (!article) {
       throw new NotFoundException('Knowledge article not found');
@@ -149,7 +156,8 @@ export class KnowledgeService {
   }
 
   private async ensureTags(tags: string[]) {
-    await Promise.all(tags.map((tag) => this.ensureTag(tag)));
+    const validTags = tags.filter((tag): tag is string => typeof tag === 'string' && Boolean(tag.trim()));
+    await Promise.all(validTags.map((tag) => this.ensureTag(tag)));
   }
 
   private async ensureTag(name: string, color?: string) {
@@ -169,13 +177,21 @@ export class KnowledgeService {
   }
 
   private canReadArticle(user: User, article: KnowledgeArticle) {
-    return article.permissionMode === 'share' || article.authorId === user.id || article.collaboratorIds?.includes(user.id) || hasPermission(user, 'knowledge:read');
+    if (hasPermission(user, 'knowledge:manage') || article.authorId === user.id) {
+      return true;
+    }
+    if (article.visibilityMode === 'all' || article.permissionMode === 'share') {
+      return hasPermission(user, 'knowledge:read');
+    }
+    const visibleUsers = article.visibleUserIds || [];
+    return article.visibilityMode === 'selected' && (visibleUsers.includes(user.id) || article.collaboratorIds?.includes(user.id));
   }
 
   private canEditArticle(user: User, article: KnowledgeArticle) {
     if (hasPermission(user, 'knowledge:manage') || article.authorId === user.id) {
       return true;
     }
-    return ['editable', 'collab'].includes(article.permissionMode) && article.collaboratorIds?.includes(user.id);
+    const collaboratorPermission = article.collaboratorPermissions?.find((item) => item.userId === user.id)?.permission;
+    return ['editable', 'collab'].includes(collaboratorPermission || article.permissionMode) && article.collaboratorIds?.includes(user.id);
   }
 }

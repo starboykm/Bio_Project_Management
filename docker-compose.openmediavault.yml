@@ -39,7 +39,7 @@ services:
       - bio_pm_net
 
   backend:
-    image: ${DOCKERHUB_NAMESPACE:-siriuswang83}/bio-project-management-backend:${APP_VERSION:-0.1.1}
+    image: ${DOCKERHUB_NAMESPACE:-siriuswang83}/bio-project-management-backend:${APP_VERSION:-0.1.2}
     container_name: bio-pm-backend
     restart: unless-stopped
     environment:
@@ -73,7 +73,7 @@ services:
       - bio_pm_net
 
   frontend:
-    image: ${DOCKERHUB_NAMESPACE:-siriuswang83}/bio-project-management-frontend:${APP_VERSION:-0.1.1}
+    image: ${DOCKERHUB_NAMESPACE:-siriuswang83}/bio-project-management-frontend:${APP_VERSION:-0.1.2}
     container_name: bio-pm-frontend
     restart: unless-stopped
     ports:

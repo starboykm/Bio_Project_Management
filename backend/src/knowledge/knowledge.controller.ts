@@ -29,13 +29,13 @@ export class KnowledgeController {
 
   @Post('categories')
   @Permissions('knowledge:manage')
-  createCategory(@Body() dto: { name: string; description?: string }, @CurrentUser() user: User) {
+  createCategory(@Body() dto: { name: string; description?: string; parentId?: string; icon?: string }, @CurrentUser() user: User) {
     return this.knowledgeService.createCategory(dto, user.id);
   }
 
   @Patch('categories/:id')
   @Permissions('knowledge:manage')
-  updateCategory(@Param('id') id: string, @Body() dto: { name?: string; description?: string }) {
+  updateCategory(@Param('id') id: string, @Body() dto: { name?: string; description?: string; parentId?: string; icon?: string }) {
     return this.knowledgeService.updateCategory(id, dto);
   }
 

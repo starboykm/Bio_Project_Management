@@ -5,6 +5,16 @@ import { http } from '../api/http';
 import { t } from '../i18n';
 
 type UserOption = { id: string; name: string; email: string };
+type FollowUpStatus = 'pending' | 'followed' | 'cooperated';
+type FollowUpRecord = {
+  id: string;
+  date: string;
+  status: FollowUpStatus;
+  note?: string;
+  userId?: string;
+  nextFollowUpDate?: string;
+  createdAt: string;
+};
 type Customer = {
   [key: string]: any;
   id?: string;
@@ -21,7 +31,11 @@ type Customer = {
   source?: string;
   requirement?: string;
   nextFollowUpDate?: string;
+  followUpDate?: string;
+  followUpStatus?: FollowUpStatus;
   followUpNote?: string;
+  followUpRecords?: FollowUpRecord[];
+  nextFollowUpTaskId?: string;
   customData?: Record<string, unknown>;
 };
 type FormField = {
@@ -64,7 +78,10 @@ const form = reactive<Customer>({
   source: '',
   requirement: '',
   nextFollowUpDate: '',
+  followUpDate: '',
+  followUpStatus: 'pending',
   followUpNote: '',
+  followUpRecords: [],
   customData: {},
 });
 
@@ -76,8 +93,13 @@ const formFields = computed(() => crmFormDefinition.value?.fields?.length ? crmF
   { id: 'region', key: 'region', label: t('crm.region'), type: 'text' },
   { id: 'contactName', key: 'contactName', label: t('crm.contactName'), type: 'text' },
 ] as FormField[]);
+const editableFormFields = computed(() => formFields.value.filter((field) => !['followUpDate', 'followUpStatus'].includes(field.key)));
+const followUpStatusOptions = computed(() => [
+  { label: t('crm.followUpStatus.pending'), value: 'pending' },
+  { label: t('crm.followUpStatus.followed'), value: 'followed' },
+  { label: t('crm.followUpStatus.cooperated'), value: 'cooperated' },
+]);
 const fixedCustomerKeys = new Set([
-  'id',
   'name',
   'region',
   'industry',
@@ -91,12 +113,64 @@ const fixedCustomerKeys = new Set([
   'source',
   'requirement',
   'nextFollowUpDate',
+  'followUpDate',
+  'followUpStatus',
   'followUpNote',
   'customData',
 ]);
+const customerPayloadKeys = [
+  'name',
+  'region',
+  'industry',
+  'contactName',
+  'contactPhone',
+  'contactEmail',
+  'stage',
+  'ownerId',
+  'trackingUserId',
+  'address',
+  'source',
+  'requirement',
+  'nextFollowUpDate',
+  'followUpDate',
+  'followUpStatus',
+  'followUpNote',
+] as const;
 
 function userName(id?: string) {
   return users.value.find((user) => user.id === id)?.name || '-';
+}
+
+function followUpStatusLabel(status?: string) {
+  return t(`crm.followUpStatus.${status || 'pending'}`);
+}
+
+function apiErrorMessage(error: unknown) {
+  const response = (error as { response?: { data?: { message?: string | string[] } } }).response;
+  const message = response?.data?.message;
+  if (Array.isArray(message)) return message.join('；');
+  return message || t('common.saveFailed');
+}
+
+function cleanValue(value: unknown) {
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return trimmed ? trimmed : undefined;
+  }
+  if (value === '' || value === undefined || value === null) return undefined;
+  return value;
+}
+
+function validateCustomerForm() {
+  if (!form.name.trim()) {
+    ElMessage.error(t('crm.validation.name'));
+    return false;
+  }
+  if (!form.trackingUserId) {
+    ElMessage.error(t('crm.validation.tracker'));
+    return false;
+  }
+  return true;
 }
 
 function resetForm() {
@@ -114,7 +188,11 @@ function resetForm() {
     source: '',
     requirement: '',
     nextFollowUpDate: '',
+    followUpDate: '',
+    followUpStatus: 'pending',
     followUpNote: '',
+    followUpRecords: [],
+    nextFollowUpTaskId: '',
     customData: {},
   });
   formFields.value.forEach((field) => {
@@ -147,7 +225,14 @@ function openCreate() {
 
 function openEdit(row: Customer) {
   editingId.value = row.id;
-  Object.assign(form, { ...row, trackingUserId: row.trackingUserId || row.ownerId || '' });
+  resetForm();
+  Object.assign(form, {
+    ...row,
+    trackingUserId: row.trackingUserId || row.ownerId || '',
+    followUpStatus: row.followUpStatus || 'pending',
+    followUpDate: row.followUpDate || '',
+    followUpRecords: row.followUpRecords || [],
+  });
   drawerVisible.value = true;
 }
 
@@ -158,25 +243,39 @@ async function selectCustomer(row: Customer) {
 }
 
 async function saveCustomer() {
-  const payload: Customer = { ownerId: form.ownerId || form.trackingUserId } as Customer;
+  if (!validateCustomerForm()) return;
+  const payload: Customer = {} as Customer;
+  const payloadRecord = payload as Record<string, unknown>;
   const customData: Record<string, unknown> = {};
-  Object.entries(form).forEach(([key, value]) => {
-    if (fixedCustomerKeys.has(key)) {
-      payload[key] = value;
-    } else {
-      customData[key] = value;
+
+  customerPayloadKeys.forEach((key) => {
+    const value = cleanValue(form[key]);
+    if (value !== undefined) payloadRecord[key] = value;
+  });
+  payload.ownerId = payload.ownerId || payload.trackingUserId;
+
+  formFields.value.forEach((field) => {
+    if (!fixedCustomerKeys.has(field.key)) {
+      const value = cleanValue(form[field.key]);
+      if (value !== undefined) customData[field.key] = value;
     }
   });
+
   payload.customData = { ...(form.customData || {}), ...customData };
-  if (editingId.value) {
-    await http.patch(`/crm/customers/${editingId.value}`, payload);
-  } else {
-    const { data } = await http.post('/crm/customers', payload);
-    selected.value = data;
+  try {
+    if (editingId.value) {
+      const { data } = await http.patch(`/crm/customers/${editingId.value}`, payload);
+      selected.value = mergeCustomData(data);
+    } else {
+      const { data } = await http.post('/crm/customers', payload);
+      selected.value = mergeCustomData(data);
+    }
+    drawerVisible.value = false;
+    await loadCustomers();
+    ElMessage.success(t('common.saveSuccess'));
+  } catch (error) {
+    ElMessage.error(apiErrorMessage(error));
   }
-  drawerVisible.value = false;
-  await loadCustomers();
-  ElMessage.success(t('common.saveSuccess'));
 }
 
 function mergeCustomData(customer: Customer) {
@@ -210,6 +309,10 @@ onMounted(async () => {
           <el-table-column :label="t('crm.tracker')" width="130">
             <template #default="{ row }">{{ userName(row.trackingUserId || row.ownerId) }}</template>
           </el-table-column>
+          <el-table-column :label="t('crm.followUpStatus')" width="120">
+            <template #default="{ row }">{{ followUpStatusLabel(row.followUpStatus) }}</template>
+          </el-table-column>
+          <el-table-column prop="nextFollowUpDate" :label="t('crm.nextFollowUpDate')" width="140" />
         </el-table>
       </div>
 
@@ -217,23 +320,43 @@ onMounted(async () => {
         <div class="detail-header">
           <div>
             <h2>{{ selected.name }}</h2>
-            <p>{{ selected.region || '-' }} · {{ t(`crm.stage.${selected.stage}`) }} · {{ userName(selected.trackingUserId || selected.ownerId) }}</p>
+            <p>
+              {{ selected.region || '-' }} · {{ t(`crm.stage.${selected.stage}`) }} · {{ userName(selected.trackingUserId || selected.ownerId) }}
+              · {{ followUpStatusLabel(selected.followUpStatus) }}
+            </p>
           </div>
           <el-button type="primary" @click="openEdit(selected)">{{ t('common.edit') }}</el-button>
         </div>
         <el-descriptions :column="2" border>
-          <el-descriptions-item v-for="field in formFields" :key="field.key" :label="field.label" :span="field.type === 'textarea' ? 2 : 1">
+          <el-descriptions-item v-for="field in editableFormFields" :key="field.key" :label="field.label" :span="field.type === 'textarea' ? 2 : 1">
             <template v-if="field.type === 'user'">{{ userName(selected[field.key] as string) }}</template>
             <template v-else-if="field.key === 'stage'">{{ t(`crm.stage.${selected[field.key] || 'lead'}`) }}</template>
             <template v-else>{{ selected[field.key] || '-' }}</template>
           </el-descriptions-item>
+          <el-descriptions-item :label="t('crm.followUpStatus')">{{ followUpStatusLabel(selected.followUpStatus) }}</el-descriptions-item>
+          <el-descriptions-item :label="t('crm.followUpDate')">{{ selected.followUpDate || '-' }}</el-descriptions-item>
+          <el-descriptions-item :label="t('crm.nextFollowUpDate')">{{ selected.nextFollowUpDate || '-' }}</el-descriptions-item>
+          <el-descriptions-item :label="t('crm.followUpTask')">
+            <router-link v-if="selected.nextFollowUpTaskId" :to="`/task?taskId=${selected.nextFollowUpTaskId}`">{{ t('crm.openFollowUpTask') }}</router-link>
+            <span v-else>-</span>
+          </el-descriptions-item>
         </el-descriptions>
+
+        <div class="section-title">{{ t('crm.followUpHistory') }}</div>
+        <el-timeline v-if="selected.followUpRecords?.length" class="crm-followup-timeline">
+          <el-timeline-item v-for="record in [...selected.followUpRecords].reverse()" :key="record.id" :timestamp="record.date">
+            <strong>{{ followUpStatusLabel(record.status) }} · {{ userName(record.userId) }}</strong>
+            <p>{{ record.note || '-' }}</p>
+            <span v-if="record.nextFollowUpDate">{{ t('crm.nextFollowUpDate') }}: {{ record.nextFollowUpDate }}</span>
+          </el-timeline-item>
+        </el-timeline>
+        <el-empty v-else :description="t('crm.noFollowUpHistory')" />
       </div>
     </section>
 
     <el-drawer v-model="drawerVisible" :title="drawerTitle" size="620px">
       <el-form :model="form" label-position="top">
-        <el-form-item v-for="field in formFields" :key="field.key" :label="field.label" :required="field.required">
+        <el-form-item v-for="field in editableFormFields" :key="field.key" :label="field.label" :required="field.required">
           <el-input v-if="field.type === 'text'" v-model="form[field.key]" />
           <el-input v-else-if="field.type === 'textarea'" v-model="form[field.key]" type="textarea" />
           <el-input-number v-else-if="field.type === 'number'" v-model="form[field.key]" style="width: 100%" />
@@ -244,6 +367,14 @@ onMounted(async () => {
           <el-select v-else v-model="form[field.key]" style="width: 100%">
             <el-option v-for="option in field.options || []" :key="option" :label="field.key === 'stage' ? t(`crm.stage.${option}`) : option" :value="option" />
           </el-select>
+        </el-form-item>
+        <el-form-item :label="t('crm.followUpStatus')">
+          <el-select v-model="form.followUpStatus" style="width: 100%">
+            <el-option v-for="option in followUpStatusOptions" :key="option.value" :label="option.label" :value="option.value" />
+          </el-select>
+        </el-form-item>
+        <el-form-item :label="t('crm.followUpDate')">
+          <el-date-picker v-model="form.followUpDate" value-format="YYYY-MM-DD" style="width: 100%" />
         </el-form-item>
       </el-form>
       <template #footer>

@@ -5,8 +5,8 @@ This guide deploys Bio Project Management with the OpenMediaVault Compose plugin
 ## Images
 
 ```bash
-docker pull siriuswang83/bio-project-management-backend:0.1.1
-docker pull siriuswang83/bio-project-management-frontend:0.1.1
+docker pull siriuswang83/bio-project-management-backend:0.1.2
+docker pull siriuswang83/bio-project-management-frontend:0.1.2
 ```
 
 The compose file also uses PostgreSQL and Redis official images:
@@ -23,12 +23,12 @@ Run these commands on a machine with Docker installed and Docker Hub login compl
 ```bash
 docker login
 
-docker build -t siriuswang83/bio-project-management-backend:0.1.1 -t siriuswang83/bio-project-management-backend:latest ./backend
-docker build -t siriuswang83/bio-project-management-frontend:0.1.1 -t siriuswang83/bio-project-management-frontend:latest ./frontend
+docker build -t siriuswang83/bio-project-management-backend:0.1.2 -t siriuswang83/bio-project-management-backend:latest ./backend
+docker build -t siriuswang83/bio-project-management-frontend:0.1.2 -t siriuswang83/bio-project-management-frontend:latest ./frontend
 
-docker push siriuswang83/bio-project-management-backend:0.1.1
+docker push siriuswang83/bio-project-management-backend:0.1.2
 docker push siriuswang83/bio-project-management-backend:latest
-docker push siriuswang83/bio-project-management-frontend:0.1.1
+docker push siriuswang83/bio-project-management-frontend:0.1.2
 docker push siriuswang83/bio-project-management-frontend:latest
 ```
 
@@ -47,13 +47,13 @@ This repository also includes `.github/workflows/docker-hub.yml`.
 
 4. Open `Actions` -> `Publish Docker Hub Images`.
 5. Click `Run workflow`.
-6. Use version `0.1.1`.
+6. Use version `0.1.2`.
 
 After the workflow finishes, pull:
 
 ```bash
-docker pull siriuswang83/bio-project-management-backend:0.1.1
-docker pull siriuswang83/bio-project-management-frontend:0.1.1
+docker pull siriuswang83/bio-project-management-backend:0.1.2
+docker pull siriuswang83/bio-project-management-frontend:0.1.2
 ```
 
 ## OMV Compose Plugin
@@ -65,7 +65,7 @@ docker pull siriuswang83/bio-project-management-frontend:0.1.1
 
    ```env
    DOCKERHUB_NAMESPACE=siriuswang83
-   APP_VERSION=0.1.1
+   APP_VERSION=0.1.2
    POSTGRES_DB=bio_pm
    POSTGRES_USER=bio_pm
    POSTGRES_PASSWORD=replace_with_a_strong_password

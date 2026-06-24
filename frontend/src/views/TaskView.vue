@@ -18,6 +18,12 @@ type Task = {
   progress: number;
   progressNote?: string;
   dueDate?: string;
+  recurrenceType?: string;
+  recurrenceInterval?: number;
+  recurrenceTime?: string;
+  recurrenceDayOfWeek?: number;
+  recurrenceDayOfMonth?: number;
+  recurrenceCron?: string;
 };
 
 const columns = [
@@ -43,6 +49,12 @@ const form = reactive<Task>({
   progress: 0,
   progressNote: '',
   dueDate: '',
+  recurrenceType: 'none',
+  recurrenceInterval: 1,
+  recurrenceTime: '',
+  recurrenceDayOfWeek: 1,
+  recurrenceDayOfMonth: 1,
+  recurrenceCron: '',
 });
 const route = useRoute();
 
@@ -51,6 +63,22 @@ const scopeOptions = computed(() => [
   { label: t('task.all'), value: 'all' },
 ]);
 const dialogTitle = computed(() => (editingTask.value ? t('task.edit') : t('task.new')));
+const recurrenceTypes = computed(() => [
+  { label: t('task.recurrence.none'), value: 'none' },
+  { label: t('task.recurrence.daily'), value: 'daily' },
+  { label: t('task.recurrence.weekly'), value: 'weekly' },
+  { label: t('task.recurrence.monthly'), value: 'monthly' },
+  { label: t('task.recurrence.custom'), value: 'custom' },
+]);
+const weekDays = computed(() => [
+  { label: t('task.weekday.1'), value: 1 },
+  { label: t('task.weekday.2'), value: 2 },
+  { label: t('task.weekday.3'), value: 3 },
+  { label: t('task.weekday.4'), value: 4 },
+  { label: t('task.weekday.5'), value: 5 },
+  { label: t('task.weekday.6'), value: 6 },
+  { label: t('task.weekday.7'), value: 7 },
+]);
 
 function userName(id?: string) {
   return users.value.find((user) => user.id === id)?.name || '-';
@@ -58,6 +86,18 @@ function userName(id?: string) {
 
 function projectName(id?: string) {
   return projects.value.find((project) => project.id === id)?.name || '-';
+}
+
+function recurrenceLabel(task: Task) {
+  if (!task.recurrenceType || task.recurrenceType === 'none') return t('task.recurrence.none');
+  return t(`task.recurrence.${task.recurrenceType}`);
+}
+
+function apiErrorMessage(error: unknown) {
+  const response = (error as { response?: { data?: { message?: string | string[] } } }).response;
+  const message = response?.data?.message;
+  if (Array.isArray(message)) return message.join('；');
+  return message || t('common.saveFailed');
 }
 
 function compactPayload<T extends Record<string, unknown>>(payload: T) {
@@ -75,7 +115,25 @@ function payload() {
     progress: form.status === 'done' ? 100 : form.progress,
     progressNote: form.progressNote,
     dueDate: form.dueDate,
+    recurrenceType: form.recurrenceType || 'none',
+    recurrenceInterval: form.recurrenceType && form.recurrenceType !== 'none' ? form.recurrenceInterval || 1 : undefined,
+    recurrenceTime: form.recurrenceTime,
+    recurrenceDayOfWeek: form.recurrenceType === 'weekly' ? form.recurrenceDayOfWeek : undefined,
+    recurrenceDayOfMonth: form.recurrenceType === 'monthly' ? form.recurrenceDayOfMonth : undefined,
+    recurrenceCron: form.recurrenceType === 'custom' ? form.recurrenceCron : undefined,
   });
+}
+
+function validateForm() {
+  if (!form.title.trim()) {
+    ElMessage.error(t('task.validation.title'));
+    return false;
+  }
+  if (form.recurrenceType === 'custom' && !form.recurrenceCron?.trim()) {
+    ElMessage.error(t('task.validation.cron'));
+    return false;
+  }
+  return true;
 }
 
 async function confirmDelete(message: string) {
@@ -118,6 +176,12 @@ function resetForm() {
     progress: 0,
     progressNote: '',
     dueDate: '',
+    recurrenceType: 'none',
+    recurrenceInterval: 1,
+    recurrenceTime: '',
+    recurrenceDayOfWeek: 1,
+    recurrenceDayOfMonth: 1,
+    recurrenceCron: '',
   });
 }
 
@@ -129,11 +193,21 @@ function openCreate() {
 
 function openEdit(task: Task) {
   editingTask.value = task;
-  Object.assign(form, { ...task, dueDate: task.dueDate || '' });
+  Object.assign(form, {
+    ...task,
+    dueDate: task.dueDate || '',
+    recurrenceType: task.recurrenceType || 'none',
+    recurrenceInterval: task.recurrenceInterval || 1,
+    recurrenceTime: task.recurrenceTime || '',
+    recurrenceDayOfWeek: task.recurrenceDayOfWeek || 1,
+    recurrenceDayOfMonth: task.recurrenceDayOfMonth || 1,
+    recurrenceCron: task.recurrenceCron || '',
+  });
   dialogVisible.value = true;
 }
 
 async function saveTask() {
+  if (!validateForm()) return;
   try {
     if (editingTask.value?.id) {
       await http.patch(`/tasks/${editingTask.value.id}`, payload());
@@ -143,8 +217,8 @@ async function saveTask() {
     dialogVisible.value = false;
     await Promise.all([loadProjects(), loadTasks()]);
     ElMessage.success(t('common.saveSuccess'));
-  } catch {
-    ElMessage.error(t('common.saveFailed'));
+  } catch (error) {
+    ElMessage.error(apiErrorMessage(error));
   }
 }
 
@@ -190,6 +264,7 @@ onMounted(async () => {
           <strong>{{ task.title }}</strong>
           <p>{{ projectName(task.projectId) }}</p>
           <span>{{ t('common.assignee') }}: {{ userName(task.assigneeId) }}</span>
+          <span>{{ t('task.recurrence') }}: {{ recurrenceLabel(task) }}</span>
           <el-progress :percentage="task.progress || 0" />
         </button>
       </div>
@@ -197,7 +272,7 @@ onMounted(async () => {
 
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="620px">
       <el-form :model="form" label-position="top">
-        <el-form-item :label="t('task.name')"><el-input v-model="form.title" /></el-form-item>
+        <el-form-item :label="t('task.name')" required><el-input v-model="form.title" /></el-form-item>
         <el-form-item :label="t('task.description')"><el-input v-model="form.description" type="textarea" /></el-form-item>
         <el-form-item :label="t('task.project')">
           <el-select v-model="form.projectId" clearable style="width: 100%">
@@ -228,6 +303,30 @@ onMounted(async () => {
         <el-form-item :label="t('common.progress')"><el-slider v-model="form.progress" :step="5" show-input /></el-form-item>
         <el-form-item :label="t('task.progressNote')"><el-input v-model="form.progressNote" type="textarea" /></el-form-item>
         <el-form-item :label="t('task.dueDate')"><el-date-picker v-model="form.dueDate" value-format="YYYY-MM-DD" style="width: 100%" /></el-form-item>
+        <el-form-item :label="t('task.recurrence')">
+          <el-select v-model="form.recurrenceType" style="width: 100%">
+            <el-option v-for="item in recurrenceTypes" :key="item.value" :label="item.label" :value="item.value" />
+          </el-select>
+        </el-form-item>
+        <template v-if="form.recurrenceType && form.recurrenceType !== 'none'">
+          <el-form-item :label="t('task.recurrenceInterval')" required>
+            <el-input-number v-model="form.recurrenceInterval" :min="1" style="width: 100%" />
+          </el-form-item>
+          <el-form-item :label="t('task.recurrenceTime')">
+            <el-time-picker v-model="form.recurrenceTime" value-format="HH:mm" format="HH:mm" style="width: 100%" />
+          </el-form-item>
+          <el-form-item v-if="form.recurrenceType === 'weekly'" :label="t('task.recurrenceDayOfWeek')" required>
+            <el-select v-model="form.recurrenceDayOfWeek" style="width: 100%">
+              <el-option v-for="day in weekDays" :key="day.value" :label="day.label" :value="day.value" />
+            </el-select>
+          </el-form-item>
+          <el-form-item v-if="form.recurrenceType === 'monthly'" :label="t('task.recurrenceDayOfMonth')" required>
+            <el-input-number v-model="form.recurrenceDayOfMonth" :min="1" :max="31" style="width: 100%" />
+          </el-form-item>
+          <el-form-item v-if="form.recurrenceType === 'custom'" :label="t('task.recurrenceCron')" required>
+            <el-input v-model="form.recurrenceCron" placeholder="0 9 * * 1" />
+          </el-form-item>
+        </template>
       </el-form>
       <template #footer>
         <el-button v-if="editingTask" type="danger" plain @click="deleteTask(editingTask)">{{ t('common.delete') }}</el-button>

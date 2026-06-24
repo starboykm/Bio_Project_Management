@@ -1,4 +1,4 @@
-import { IsArray, IsIn, IsNumber, IsOptional, IsString, Max, Min, ValidateNested } from 'class-validator';
+import { IsArray, IsIn, IsNotEmpty, IsNumber, IsOptional, IsString, Max, Min, ValidateIf, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreateProjectStepDto {
@@ -20,6 +20,7 @@ export class CreateProjectStepDto {
 
 export class CreateProjectDto {
   @IsString()
+  @IsNotEmpty({ message: '项目名称不能为空' })
   name: string;
 
   @IsOptional()
@@ -45,6 +46,22 @@ export class CreateProjectDto {
   @IsOptional()
   @IsString()
   fertilizationPlan?: string;
+
+  @IsOptional()
+  @IsString()
+  objective?: string;
+
+  @ValidateIf((dto: CreateProjectDto) => dto.type === 'customer')
+  @IsNotEmpty({ message: '客户合作项目必须选择关联客户' })
+  customerId?: string;
+
+  @IsOptional()
+  @IsString()
+  contractName?: string;
+
+  @IsOptional()
+  @IsString()
+  contractPath?: string;
 
   @IsOptional()
   @IsString()

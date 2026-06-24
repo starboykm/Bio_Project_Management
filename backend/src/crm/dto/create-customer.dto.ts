@@ -1,3 +1,4 @@
+import { Transform } from 'class-transformer';
 import { IsEmail, IsIn, IsObject, IsOptional, IsString } from 'class-validator';
 
 export class CreateCustomerDto {
@@ -21,6 +22,7 @@ export class CreateCustomerDto {
   contactPhone?: string;
 
   @IsOptional()
+  @Transform(({ value }) => (value === '' ? undefined : value))
   @IsEmail()
   contactEmail?: string;
 
@@ -51,6 +53,14 @@ export class CreateCustomerDto {
   @IsOptional()
   @IsString()
   nextFollowUpDate?: string;
+
+  @IsOptional()
+  @IsString()
+  followUpDate?: string;
+
+  @IsOptional()
+  @IsIn(['pending', 'followed', 'cooperated'])
+  followUpStatus?: 'pending' | 'followed' | 'cooperated';
 
   @IsOptional()
   @IsString()

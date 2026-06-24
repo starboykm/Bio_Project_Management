@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../common/jwt-auth.guard';
 import { Permissions } from '../common/permissions.decorator';
 import { PermissionsGuard } from '../common/permissions.guard';
@@ -13,6 +13,18 @@ export class ReportController {
   @Permissions('report:read')
   dashboard() {
     return this.reportService.dashboard();
+  }
+
+  @Get('operations')
+  @Permissions('report:read')
+  operations() {
+    return this.reportService.operations();
+  }
+
+  @Post('operations')
+  @Permissions('report:read')
+  generateOperationsReport() {
+    return this.reportService.generateOperationsReport();
   }
 
   @Get()

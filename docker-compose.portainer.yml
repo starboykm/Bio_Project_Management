@@ -40,7 +40,7 @@ services:
       - bio_pm_net
 
   backend:
-    image: bio-project-management-backend:0.1.1
+    image: bio-project-management-backend:0.1.2
     container_name: bio-pm-backend
     restart: unless-stopped
     build:
@@ -77,7 +77,7 @@ services:
       - bio_pm_net
 
   frontend:
-    image: bio-project-management-frontend:0.1.1
+    image: bio-project-management-frontend:0.1.2
     container_name: bio-pm-frontend
     restart: unless-stopped
     build:

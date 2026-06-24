@@ -30,6 +30,9 @@ export class KnowledgeArticle {
   category?: string;
 
   @Column({ nullable: true })
+  categoryId?: string;
+
+  @Column({ nullable: true })
   attachmentName?: string;
 
   @Column({ nullable: true })
@@ -40,6 +43,15 @@ export class KnowledgeArticle {
 
   @Column({ type: 'simple-array', default: '' })
   collaboratorIds: string[];
+
+  @Column({ type: 'simple-json', nullable: true })
+  collaboratorPermissions?: Array<{ userId: string; permission: 'readonly' | 'editable' | 'collab' }>;
+
+  @Column({ default: 'all' })
+  visibilityMode: 'all' | 'private' | 'selected';
+
+  @Column({ type: 'simple-array', default: '' })
+  visibleUserIds: string[];
 
   @Column({ default: 'readonly' })
   permissionMode: 'readonly' | 'editable' | 'collab' | 'share';

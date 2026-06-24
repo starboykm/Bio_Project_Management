@@ -26,6 +26,18 @@ export class Project {
   @Column({ type: 'text', nullable: true })
   fertilizationPlan?: string;
 
+  @Column({ type: 'text', nullable: true })
+  objective?: string;
+
+  @Column({ nullable: true })
+  customerId?: string;
+
+  @Column({ nullable: true })
+  contractName?: string;
+
+  @Column({ nullable: true })
+  contractPath?: string;
+
   @Column({ nullable: true })
   ownerId?: string;
 

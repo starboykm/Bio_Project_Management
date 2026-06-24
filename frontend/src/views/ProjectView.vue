@@ -7,6 +7,7 @@ import MentionInput from '../components/MentionInput.vue';
 import { t } from '../i18n';
 
 type UserOption = { id: string; name: string; email: string };
+type CustomerOption = { id: string; name: string };
 type MentionOption = { id: string; name: string; label: string; email?: string };
 type ProjectComment = {
   id: string;
@@ -24,6 +25,10 @@ type Project = {
   trialField?: string;
   microbialBatch?: string;
   fertilizationPlan?: string;
+  objective?: string;
+  customerId?: string;
+  contractName?: string;
+  contractPath?: string;
   ownerId?: string;
   participantIds?: string[];
   progress?: number;
@@ -43,10 +48,17 @@ type Task = {
   progress: number;
   progressNote?: string;
   dueDate?: string;
+  recurrenceType?: string;
+  recurrenceInterval?: number;
+  recurrenceTime?: string;
+  recurrenceDayOfWeek?: number;
+  recurrenceDayOfMonth?: number;
+  recurrenceCron?: string;
 };
 
 const projects = ref<Project[]>([]);
 const users = ref<UserOption[]>([]);
+const customers = ref<CustomerOption[]>([]);
 const mentionOptions = ref<MentionOption[]>([]);
 const projectTasks = ref<Task[]>([]);
 const selectedId = ref<string>();
@@ -67,6 +79,10 @@ const projectForm = reactive<Project>({
   trialField: '',
   microbialBatch: '',
   fertilizationPlan: '',
+  objective: '',
+  customerId: '',
+  contractName: '',
+  contractPath: '',
   ownerId: '',
   participantIds: [],
 });
@@ -81,14 +97,64 @@ const taskForm = reactive<Task>({
   progress: 0,
   progressNote: '',
   dueDate: '',
+  recurrenceType: 'none',
+  recurrenceInterval: 1,
+  recurrenceTime: '',
+  recurrenceDayOfWeek: 1,
+  recurrenceDayOfMonth: 1,
+  recurrenceCron: '',
 });
 
 const ownerName = computed(() => users.value.find((user) => user.id === selected.value?.ownerId)?.name || '-');
 const projectDialogTitle = computed(() => (editingProjectId.value ? t('project.edit') : t('project.new')));
 const taskDialogTitle = computed(() => (editingTask.value ? t('task.edit') : t('task.new')));
 
+const projectTypes = computed(() => [
+  { label: t('project.type.trial'), value: 'trial' },
+  { label: t('project.type.customer'), value: 'customer' },
+  { label: t('project.type.internal'), value: 'internal' },
+]);
+
+const recurrenceTypes = computed(() => [
+  { label: t('task.recurrence.none'), value: 'none' },
+  { label: t('task.recurrence.daily'), value: 'daily' },
+  { label: t('task.recurrence.weekly'), value: 'weekly' },
+  { label: t('task.recurrence.monthly'), value: 'monthly' },
+  { label: t('task.recurrence.custom'), value: 'custom' },
+]);
+
+const weekDays = computed(() => [
+  { label: t('task.weekday.1'), value: 1 },
+  { label: t('task.weekday.2'), value: 2 },
+  { label: t('task.weekday.3'), value: 3 },
+  { label: t('task.weekday.4'), value: 4 },
+  { label: t('task.weekday.5'), value: 5 },
+  { label: t('task.weekday.6'), value: 6 },
+  { label: t('task.weekday.7'), value: 7 },
+]);
+
 function userName(id?: string) {
   return users.value.find((user) => user.id === id)?.name || '-';
+}
+
+function customerName(id?: string) {
+  return customers.value.find((customer) => customer.id === id)?.name || '-';
+}
+
+function projectTypeLabel(type?: string) {
+  return t(`project.type.${type || 'trial'}`);
+}
+
+function recurrenceLabel(task: Task) {
+  if (!task.recurrenceType || task.recurrenceType === 'none') return t('task.recurrence.none');
+  return t(`task.recurrence.${task.recurrenceType}`);
+}
+
+function apiErrorMessage(error: unknown) {
+  const response = (error as { response?: { data?: { message?: string | string[] } } }).response;
+  const message = response?.data?.message;
+  if (Array.isArray(message)) return message.join('；');
+  return message || t('common.saveFailed');
 }
 
 function compactPayload<T extends Record<string, unknown>>(payload: T) {
@@ -104,6 +170,10 @@ function projectPayload() {
     trialField: projectForm.trialField,
     microbialBatch: projectForm.microbialBatch,
     fertilizationPlan: projectForm.fertilizationPlan,
+    objective: projectForm.objective,
+    customerId: projectForm.type === 'customer' ? projectForm.customerId : undefined,
+    contractName: projectForm.type === 'customer' ? projectForm.contractName : undefined,
+    contractPath: projectForm.type === 'customer' ? projectForm.contractPath : undefined,
     ownerId: projectForm.ownerId,
     participantIds: projectForm.participantIds || [],
   });
@@ -120,8 +190,50 @@ function taskPayload() {
     progress: taskForm.status === 'done' ? 100 : taskForm.progress,
     progressNote: taskForm.progressNote,
     dueDate: taskForm.dueDate,
+    recurrenceType: taskForm.recurrenceType || 'none',
+    recurrenceInterval: taskForm.recurrenceType && taskForm.recurrenceType !== 'none' ? taskForm.recurrenceInterval || 1 : undefined,
+    recurrenceTime: taskForm.recurrenceTime,
+    recurrenceDayOfWeek: taskForm.recurrenceType === 'weekly' ? taskForm.recurrenceDayOfWeek : undefined,
+    recurrenceDayOfMonth: taskForm.recurrenceType === 'monthly' ? taskForm.recurrenceDayOfMonth : undefined,
+    recurrenceCron: taskForm.recurrenceType === 'custom' ? taskForm.recurrenceCron : undefined,
   };
   return compactPayload(payload);
+}
+
+function validateProjectForm() {
+  if (!projectForm.name.trim()) {
+    ElMessage.error(t('project.validation.name'));
+    return false;
+  }
+  if (!projectForm.ownerId) {
+    ElMessage.error(t('project.validation.owner'));
+    return false;
+  }
+  if (projectForm.type === 'trial' && (!projectForm.cropType?.trim() || !projectForm.trialField?.trim())) {
+    ElMessage.error(t('project.validation.trial'));
+    return false;
+  }
+  if (projectForm.type === 'customer' && !projectForm.customerId) {
+    ElMessage.error(t('project.validation.customer'));
+    return false;
+  }
+  if (projectForm.type === 'internal' && !projectForm.objective?.trim()) {
+    ElMessage.error(t('project.validation.objective'));
+    return false;
+  }
+  return true;
+}
+
+function validateTaskForm() {
+  if (!taskForm.title.trim()) {
+    ElMessage.error(t('task.validation.title'));
+    return false;
+  }
+  if (taskForm.recurrenceType === 'custom' && !taskForm.recurrenceCron?.trim()) {
+    ElMessage.error(t('task.validation.cron'));
+    return false;
+  }
+  return true;
 }
 
 async function confirmDelete(message: string) {
@@ -136,6 +248,11 @@ async function confirmDelete(message: string) {
 async function loadUsers() {
   const { data } = await http.get('/users');
   users.value = data;
+}
+
+async function loadCustomers() {
+  const { data } = await http.get('/crm/customers');
+  customers.value = data;
 }
 
 async function loadMentionOptions() {
@@ -197,6 +314,10 @@ function openCreateProject() {
     trialField: '',
     microbialBatch: '',
     fertilizationPlan: '',
+    objective: '',
+    customerId: '',
+    contractName: '',
+    contractPath: '',
     ownerId: users.value[0]?.id || '',
     participantIds: [],
   });
@@ -214,6 +335,10 @@ function openEditProject() {
     trialField: selected.value.trialField || '',
     microbialBatch: selected.value.microbialBatch || '',
     fertilizationPlan: selected.value.fertilizationPlan || '',
+    objective: selected.value.objective || '',
+    customerId: selected.value.customerId || '',
+    contractName: selected.value.contractName || '',
+    contractPath: selected.value.contractPath || '',
     ownerId: selected.value.ownerId || '',
     participantIds: selected.value.participantIds || [],
   });
@@ -221,15 +346,41 @@ function openEditProject() {
 }
 
 async function submitProject() {
-  if (editingProjectId.value) {
-    await http.patch(`/projects/${editingProjectId.value}`, projectPayload());
-    selectedId.value = editingProjectId.value;
-  } else {
-    const { data } = await http.post('/projects', projectPayload());
-    selectedId.value = data.id;
+  if (!validateProjectForm()) return;
+  try {
+    if (editingProjectId.value) {
+      await http.patch(`/projects/${editingProjectId.value}`, projectPayload());
+      selectedId.value = editingProjectId.value;
+    } else {
+      const { data } = await http.post('/projects', projectPayload());
+      selectedId.value = data.id;
+    }
+    projectDialogVisible.value = false;
+    await loadProjects();
+    ElMessage.success(t('common.saveSuccess'));
+  } catch (error) {
+    ElMessage.error(apiErrorMessage(error));
   }
-  projectDialogVisible.value = false;
-  await loadProjects();
+}
+
+async function uploadContract(event: Event) {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  if (!file) return;
+  const form = new FormData();
+  form.append('file', file);
+  try {
+    const { data } = await http.post('/projects/contracts/upload', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    projectForm.contractName = data.name;
+    projectForm.contractPath = data.url;
+    ElMessage.success(t('project.contractUploadSuccess'));
+  } catch (error) {
+    ElMessage.error(apiErrorMessage(error));
+  } finally {
+    input.value = '';
+  }
 }
 
 async function deleteProject() {
@@ -252,6 +403,12 @@ function resetTaskForm() {
     progress: 0,
     progressNote: '',
     dueDate: '',
+    recurrenceType: 'none',
+    recurrenceInterval: 1,
+    recurrenceTime: '',
+    recurrenceDayOfWeek: 1,
+    recurrenceDayOfMonth: 1,
+    recurrenceCron: '',
   });
 }
 
@@ -267,11 +424,18 @@ function openEditTask(task: Task) {
     ...task,
     projectId: selected.value?.id || task.projectId || '',
     dueDate: task.dueDate || '',
+    recurrenceType: task.recurrenceType || 'none',
+    recurrenceInterval: task.recurrenceInterval || 1,
+    recurrenceTime: task.recurrenceTime || '',
+    recurrenceDayOfWeek: task.recurrenceDayOfWeek || 1,
+    recurrenceDayOfMonth: task.recurrenceDayOfMonth || 1,
+    recurrenceCron: task.recurrenceCron || '',
   });
   taskDialogVisible.value = true;
 }
 
 async function saveTask() {
+  if (!validateTaskForm()) return;
   try {
     if (editingTask.value?.id) {
       await http.patch(`/tasks/${editingTask.value.id}`, taskPayload());
@@ -281,8 +445,8 @@ async function saveTask() {
     taskDialogVisible.value = false;
     await refreshSelectedProject();
     ElMessage.success(t('common.saveSuccess'));
-  } catch {
-    ElMessage.error(t('common.saveFailed'));
+  } catch (error) {
+    ElMessage.error(apiErrorMessage(error));
   }
 }
 
@@ -304,7 +468,7 @@ async function addComment() {
 }
 
 onMounted(async () => {
-  await Promise.all([loadUsers(), loadMentionOptions()]);
+  await Promise.all([loadUsers(), loadCustomers(), loadMentionOptions()]);
   await loadProjects();
 });
 </script>
@@ -323,6 +487,9 @@ onMounted(async () => {
       <div class="work-panel project-list-panel">
         <el-table :data="projects" highlight-current-row @row-click="selectProject">
           <el-table-column prop="name" :label="t('project.name')" min-width="180" />
+          <el-table-column :label="t('project.type')" width="120">
+            <template #default="{ row }">{{ projectTypeLabel(row.type) }}</template>
+          </el-table-column>
           <el-table-column :label="t('common.progress')" width="130">
             <template #default="{ row }">
               <el-progress :percentage="row.progress || 0" />
@@ -338,19 +505,39 @@ onMounted(async () => {
         <div class="detail-header detail-header-clickable" :title="t('project.edit')" @click="openEditProject">
           <div>
             <h2>{{ selected.name }}</h2>
-            <p>{{ t('common.owner') }}: {{ ownerName }} · {{ t('project.cropType') }}: {{ selected.cropType || '-' }} · {{ t('project.trialField') }}: {{ selected.trialField || '-' }}</p>
+            <p>
+              {{ t('project.type') }}: {{ projectTypeLabel(selected.type) }} · {{ t('common.owner') }}: {{ ownerName }}
+              <template v-if="selected.type === 'trial'"> · {{ t('project.cropType') }}: {{ selected.cropType || '-' }}</template>
+              <template v-if="selected.type === 'customer'"> · {{ t('project.customer') }}: {{ customerName(selected.customerId) }}</template>
+            </p>
           </div>
           <el-progress type="dashboard" :percentage="selected.progress || 0" :width="86" />
         </div>
 
         <el-descriptions :column="2" border>
-          <el-descriptions-item :label="t('project.microbialBatch')">{{ selected.microbialBatch || '-' }}</el-descriptions-item>
+          <el-descriptions-item :label="t('project.type')">{{ projectTypeLabel(selected.type) }}</el-descriptions-item>
           <el-descriptions-item :label="t('common.status')">{{ t(`status.${selected.status}`) }}</el-descriptions-item>
           <el-descriptions-item :label="t('project.participants')">
             {{ (selected.participantIds || []).map(userName).join('、') || '-' }}
           </el-descriptions-item>
           <el-descriptions-item :label="t('project.latestUpdate')">{{ selected.latestUpdate || '-' }}</el-descriptions-item>
-          <el-descriptions-item :label="t('project.fertilizationPlan')" :span="2">{{ selected.fertilizationPlan || '-' }}</el-descriptions-item>
+          <template v-if="selected.type === 'trial'">
+            <el-descriptions-item :label="t('project.cropType')">{{ selected.cropType || '-' }}</el-descriptions-item>
+            <el-descriptions-item :label="t('project.trialField')">{{ selected.trialField || '-' }}</el-descriptions-item>
+            <el-descriptions-item :label="t('project.microbialBatch')">{{ selected.microbialBatch || '-' }}</el-descriptions-item>
+            <el-descriptions-item :label="t('project.fertilizationPlan')" :span="2">{{ selected.fertilizationPlan || '-' }}</el-descriptions-item>
+          </template>
+          <template v-else-if="selected.type === 'customer'">
+            <el-descriptions-item :label="t('project.customer')">{{ customerName(selected.customerId) }}</el-descriptions-item>
+            <el-descriptions-item :label="t('project.contract')">
+              <a v-if="selected.contractPath" :href="selected.contractPath" target="_blank" rel="noreferrer">{{ selected.contractName || t('project.contract') }}</a>
+              <span v-else>-</span>
+            </el-descriptions-item>
+            <el-descriptions-item :label="t('project.objective')" :span="2">{{ selected.objective || '-' }}</el-descriptions-item>
+          </template>
+          <template v-else>
+            <el-descriptions-item :label="t('project.objective')" :span="2">{{ selected.objective || '-' }}</el-descriptions-item>
+          </template>
           <el-descriptions-item :label="t('project.resultSummary')" :span="2">{{ selected.resultSummary || '-' }}</el-descriptions-item>
         </el-descriptions>
 
@@ -368,6 +555,9 @@ onMounted(async () => {
           </el-table-column>
           <el-table-column :label="t('task.priority')" width="100">
             <template #default="{ row }">{{ t(`priority.${row.priority}`) }}</template>
+          </el-table-column>
+          <el-table-column :label="t('task.recurrence')" width="110">
+            <template #default="{ row }">{{ recurrenceLabel(row) }}</template>
           </el-table-column>
           <el-table-column :label="t('common.progress')" width="150">
             <template #default="{ row }"><el-progress :percentage="row.progress || 0" /></template>
@@ -398,8 +588,13 @@ onMounted(async () => {
 
     <el-dialog v-model="projectDialogVisible" :title="projectDialogTitle" width="620px">
       <el-form :model="projectForm" label-position="top">
-        <el-form-item :label="t('project.name')"><el-input v-model="projectForm.name" /></el-form-item>
-        <el-form-item :label="t('common.owner')">
+        <el-form-item :label="t('project.name')" required><el-input v-model="projectForm.name" /></el-form-item>
+        <el-form-item :label="t('project.type')" required>
+          <el-select v-model="projectForm.type" style="width: 100%">
+            <el-option v-for="type in projectTypes" :key="type.value" :label="type.label" :value="type.value" />
+          </el-select>
+        </el-form-item>
+        <el-form-item :label="t('common.owner')" required>
           <el-select v-model="projectForm.ownerId" style="width: 100%">
             <el-option v-for="user in users" :key="user.id" :label="user.name" :value="user.id" />
           </el-select>
@@ -417,10 +612,33 @@ onMounted(async () => {
             <el-option :label="t('status.completed')" value="completed" />
           </el-select>
         </el-form-item>
-        <el-form-item :label="t('project.cropType')"><el-input v-model="projectForm.cropType" /></el-form-item>
-        <el-form-item :label="t('project.trialField')"><el-input v-model="projectForm.trialField" /></el-form-item>
-        <el-form-item :label="t('project.microbialBatch')"><el-input v-model="projectForm.microbialBatch" /></el-form-item>
-        <el-form-item :label="t('project.fertilizationPlan')"><el-input v-model="projectForm.fertilizationPlan" type="textarea" /></el-form-item>
+        <template v-if="projectForm.type === 'trial'">
+          <el-form-item :label="t('project.cropType')" required><el-input v-model="projectForm.cropType" /></el-form-item>
+          <el-form-item :label="t('project.trialField')" required><el-input v-model="projectForm.trialField" /></el-form-item>
+          <el-form-item :label="t('project.microbialBatch')"><el-input v-model="projectForm.microbialBatch" /></el-form-item>
+          <el-form-item :label="t('project.fertilizationPlan')"><el-input v-model="projectForm.fertilizationPlan" type="textarea" /></el-form-item>
+        </template>
+        <template v-else-if="projectForm.type === 'customer'">
+          <el-form-item :label="t('project.customer')" required>
+            <el-select v-model="projectForm.customerId" filterable style="width: 100%">
+              <el-option v-for="customer in customers" :key="customer.id" :label="customer.name" :value="customer.id" />
+            </el-select>
+          </el-form-item>
+          <el-form-item :label="t('project.objective')"><el-input v-model="projectForm.objective" type="textarea" /></el-form-item>
+          <el-form-item :label="t('project.contract')">
+            <div class="upload-row">
+              <label class="upload-button">
+                {{ t('project.uploadContract') }}
+                <input type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png" @change="uploadContract" />
+              </label>
+              <a v-if="projectForm.contractPath" :href="projectForm.contractPath" target="_blank" rel="noreferrer">{{ projectForm.contractName }}</a>
+              <span v-else>{{ t('project.noContract') }}</span>
+            </div>
+          </el-form-item>
+        </template>
+        <template v-else>
+          <el-form-item :label="t('project.objective')" required><el-input v-model="projectForm.objective" type="textarea" /></el-form-item>
+        </template>
       </el-form>
       <template #footer>
         <el-button v-if="editingProjectId" type="danger" plain @click="deleteProject">{{ t('common.delete') }}</el-button>
@@ -431,7 +649,7 @@ onMounted(async () => {
 
     <el-dialog v-model="taskDialogVisible" :title="taskDialogTitle" width="620px">
       <el-form :model="taskForm" label-position="top">
-        <el-form-item :label="t('task.name')"><el-input v-model="taskForm.title" /></el-form-item>
+        <el-form-item :label="t('task.name')" required><el-input v-model="taskForm.title" /></el-form-item>
         <el-form-item :label="t('task.description')"><el-input v-model="taskForm.description" type="textarea" /></el-form-item>
         <el-form-item :label="t('common.assignee')">
           <el-select v-model="taskForm.assigneeId" style="width: 100%">
@@ -457,6 +675,30 @@ onMounted(async () => {
         <el-form-item :label="t('common.progress')"><el-slider v-model="taskForm.progress" :step="5" show-input /></el-form-item>
         <el-form-item :label="t('task.progressNote')"><el-input v-model="taskForm.progressNote" type="textarea" /></el-form-item>
         <el-form-item :label="t('task.dueDate')"><el-date-picker v-model="taskForm.dueDate" value-format="YYYY-MM-DD" style="width: 100%" /></el-form-item>
+        <el-form-item :label="t('task.recurrence')">
+          <el-select v-model="taskForm.recurrenceType" style="width: 100%">
+            <el-option v-for="item in recurrenceTypes" :key="item.value" :label="item.label" :value="item.value" />
+          </el-select>
+        </el-form-item>
+        <template v-if="taskForm.recurrenceType && taskForm.recurrenceType !== 'none'">
+          <el-form-item :label="t('task.recurrenceInterval')" required>
+            <el-input-number v-model="taskForm.recurrenceInterval" :min="1" style="width: 100%" />
+          </el-form-item>
+          <el-form-item :label="t('task.recurrenceTime')">
+            <el-time-picker v-model="taskForm.recurrenceTime" value-format="HH:mm" format="HH:mm" style="width: 100%" />
+          </el-form-item>
+          <el-form-item v-if="taskForm.recurrenceType === 'weekly'" :label="t('task.recurrenceDayOfWeek')" required>
+            <el-select v-model="taskForm.recurrenceDayOfWeek" style="width: 100%">
+              <el-option v-for="day in weekDays" :key="day.value" :label="day.label" :value="day.value" />
+            </el-select>
+          </el-form-item>
+          <el-form-item v-if="taskForm.recurrenceType === 'monthly'" :label="t('task.recurrenceDayOfMonth')" required>
+            <el-input-number v-model="taskForm.recurrenceDayOfMonth" :min="1" :max="31" style="width: 100%" />
+          </el-form-item>
+          <el-form-item v-if="taskForm.recurrenceType === 'custom'" :label="t('task.recurrenceCron')" required>
+            <el-input v-model="taskForm.recurrenceCron" placeholder="0 9 * * 1" />
+          </el-form-item>
+        </template>
       </el-form>
       <template #footer>
         <el-button v-if="editingTask" type="danger" plain @click="deleteTask(editingTask)">{{ t('common.delete') }}</el-button>

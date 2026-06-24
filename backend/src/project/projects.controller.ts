@@ -1,4 +1,6 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
 import { CurrentUser } from '../common/current-user.decorator';
 import { JwtAuthGuard } from '../common/jwt-auth.guard';
 import { Permissions } from '../common/permissions.decorator';
@@ -31,6 +33,23 @@ export class ProjectsController {
   @Permissions('project:write')
   create(@Body() dto: CreateProjectDto, @CurrentUser() user: User) {
     return this.projectsService.create(dto, user);
+  }
+
+  @Post('contracts/upload')
+  @Permissions('project:write')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: process.env.UPLOAD_DIR || './uploads',
+        filename: (_, file, cb) => {
+          const safeName = file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
+          cb(null, `contract-${Date.now()}-${safeName}`);
+        },
+      }),
+    }),
+  )
+  uploadContract(@UploadedFile() file: Express.Multer.File) {
+    return this.projectsService.uploadContract(file);
   }
 
   @Patch(':id')
